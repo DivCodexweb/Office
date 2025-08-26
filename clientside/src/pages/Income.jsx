@@ -6,39 +6,35 @@ const Income = () => {
   const [clients, setClients] = useState([]);
   const [formData, setFormData] = useState({
     clientId: "",
-    clientName: "",   // ✅ clientName bhi add
+    clientName: "",
     amount: "",
     description: "",
     Creditdebit: ""
   });
+  const [loading, setLoading] = useState(false); // ✅ loading state
 
-  // Backend se client list lana
+  // Fetch clients
   useEffect(() => {
     const fetchClients = async () => {
       try {
         const res = await fetch(`${API_URL}/clients/getClients`);
         const data = await res.json();
-        setClients(data.users || []); // safe check
+        setClients(data.users || []);
       } catch (error) {
         console.error("Error fetching clients:", error);
+        alert("Error fetching clients");
       }
     };
     fetchClients();
   }, []);
 
-  // Input handle karna
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Client dropdown ke liye alag handler (id + name dono set karega)
   const handleClientChange = (e) => {
     const selectedId = e.target.value;
     const selectedClient = clients.find((c) => String(c.id) === selectedId);
-
     setFormData({
       ...formData,
       clientId: selectedId,
@@ -46,18 +42,16 @@ const Income = () => {
     });
   };
 
-  // Form submit karna
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form Data:", formData); // ✅ dono jayenge
+    setLoading(true); // ✅ start loading
 
     try {
       const res = await fetch(`${API_URL}/incoms/addIncome`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData) // ✅ id + name dono send ho rhe hain
+        body: JSON.stringify(formData)
       });
-
       const data = await res.json();
 
       if (res.ok) {
@@ -74,6 +68,9 @@ const Income = () => {
       }
     } catch (error) {
       console.error("Error submitting income:", error);
+      alert("Error submitting income");
+    } finally {
+      setLoading(false); // ✅ stop loading
     }
   };
 
@@ -81,14 +78,13 @@ const Income = () => {
     <div className="container mt-4">
       <h3>Add Income</h3>
       <form onSubmit={handleSubmit}>
-        {/* Client Name Dropdown */}
         <div className="mb-3">
           <label className="form-label">Client Name</label>
           <select
             name="clientId"
             className="form-control"
             value={formData.clientId}
-            onChange={handleClientChange} // ✅ custom handler
+            onChange={handleClientChange}
             required
           >
             <option value="">-- Select Client --</option>
@@ -100,7 +96,6 @@ const Income = () => {
           </select>
         </div>
 
-        {/* Credit / Debit */}
         <div className="mb-3">
           <label className="form-label">Credit / Debit</label>
           <select
@@ -116,7 +111,6 @@ const Income = () => {
           </select>
         </div>
 
-        {/* Amount */}
         <div className="mb-3">
           <label className="form-label">Amount</label>
           <input
@@ -129,7 +123,6 @@ const Income = () => {
           />
         </div>
 
-        {/* Description */}
         <div className="mb-3">
           <label className="form-label">Description</label>
           <textarea
@@ -140,8 +133,8 @@ const Income = () => {
           />
         </div>
 
-        <button type="submit" className="btn btn-primary">
-          Save Income
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? "Saving..." : "Save Income"} {/* ✅ Loading feedback */}
         </button>
       </form>
     </div>

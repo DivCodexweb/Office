@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Form } from "react-bootstrap";
+import { Modal, Button, Form, Spinner } from "react-bootstrap";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -8,6 +8,11 @@ const CreateClient = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
   const [clients, setClients] = useState([]);
+
+  // Loading states
+  const [loadingAdd, setLoadingAdd] = useState(false);
+  const [loadingDelete, setLoadingDelete] = useState(null); // store id of deleting client
+  const [loadingUpdate, setLoadingUpdate] = useState(false);
 
   // Client form states
   const [name, setName] = useState("");
@@ -19,11 +24,8 @@ const CreateClient = () => {
     try {
       const res = await fetch(`${API_URL}/clients/getClients`);
       const data = await res.json();
-      if (res.ok) {
-        setClients(data.users);
-      } else {
-        alert(data.message || "Failed to fetch clients");
-      }
+      if (res.ok) setClients(data.users);
+      else alert(data.message || "Failed to fetch clients");
     } catch (err) {
       console.error(err);
       alert("Error fetching clients");
@@ -34,7 +36,6 @@ const CreateClient = () => {
     getClients();
   }, []);
 
-  // Open edit modal
   const handleEdit = (client) => {
     setSelectedClient(client);
     setShowModal(true);
@@ -47,13 +48,13 @@ const CreateClient = () => {
       return;
     }
 
+    setLoadingAdd(true);
     try {
       const res = await fetch(`${API_URL}/clients/addClient`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, companyName }),
       });
-
       const data = await res.json();
       if (res.ok) {
         alert("Client added successfully!");
@@ -61,12 +62,12 @@ const CreateClient = () => {
         setEmail("");
         setCompanyName("");
         getClients();
-      } else {
-        alert(data.message || "Failed to add client");
-      }
+      } else alert(data.message || "Failed to add client");
     } catch (err) {
       console.error(err);
       alert("Error adding client");
+    } finally {
+      setLoadingAdd(false);
     }
   };
 
@@ -74,55 +75,56 @@ const CreateClient = () => {
   const handleDeleteClient = async (id) => {
     if (!window.confirm("Are you sure you want to delete this client?")) return;
 
+    setLoadingDelete(id);
     try {
       const res = await fetch(`${API_URL}/clients/deleteClient/${id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
       });
-
       const data = await res.json();
       if (res.ok) {
         alert("Client deleted successfully!");
         getClients();
-      } else {
-        alert(data.message || "Failed to delete client");
-      }
+      } else alert(data.message || "Failed to delete client");
     } catch (err) {
       console.error(err);
       alert("Error deleting client");
+    } finally {
+      setLoadingDelete(null);
     }
   };
 
   // Update Client
   const handleUpdateClient = async () => {
+    if (!selectedClient) return;
+
+    setLoadingUpdate(true);
     try {
       const res = await fetch(`${API_URL}/clients/updateClient/${selectedClient.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: selectedClient.name || undefined,
-          email: selectedClient.email || undefined,
-          companyName: selectedClient.companyName || undefined,
+          name: selectedClient.name,
+          email: selectedClient.email,
+          companyName: selectedClient.companyName,
         }),
       });
-
       const data = await res.json();
       if (res.ok) {
         alert("Client updated successfully!");
         setShowModal(false);
         getClients();
-      } else {
-        alert(data.message || "Failed to update client");
-      }
+      } else alert(data.message || "Failed to update client");
     } catch (err) {
       console.error(err);
       alert("Error updating client");
+    } finally {
+      setLoadingUpdate(false);
     }
   };
 
   return (
     <div className="container mt-4">
-      {/* Tabs */}
       <ul className="nav nav-tabs">
         <li className="nav-item">
           <button
@@ -142,9 +144,7 @@ const CreateClient = () => {
         </li>
       </ul>
 
-      {/* Tab Content */}
       <div className="p-3 border border-top-0">
-        {/* Add Client */}
         {activeTab === "add" && (
           <Form>
             <Form.Group>
@@ -177,20 +177,21 @@ const CreateClient = () => {
               />
             </Form.Group>
 
-            <Button variant="primary" className="mt-3" onClick={handleAddClient}>
-              Add Client
+            <Button
+              variant="primary"
+              className="mt-3"
+              onClick={handleAddClient}
+              disabled={loadingAdd}
+            >
+              {loadingAdd && <Spinner animation="border" size="sm" className="me-2" />}
+              {loadingAdd ? "Adding..." : "Add Client"}
             </Button>
           </Form>
         )}
 
-        {/* Manage Clients */}
         {activeTab === "update" && (
           <div>
-            <input
-              type="text"
-              placeholder="Search client..."
-              className="form-control mb-3"
-            />
+            <input type="text" placeholder="Search client..." className="form-control mb-3" />
             <ul className="list-group">
               {clients.map((client) => (
                 <li
@@ -206,6 +207,7 @@ const CreateClient = () => {
                       size="sm"
                       className="me-2"
                       onClick={() => handleEdit(client)}
+                      disabled={loadingUpdate}
                     >
                       Edit
                     </Button>
@@ -213,7 +215,11 @@ const CreateClient = () => {
                       variant="outline-danger"
                       size="sm"
                       onClick={() => handleDeleteClient(client.id)}
+                      disabled={loadingDelete === client.id}
                     >
+                      {loadingDelete === client.id && (
+                        <Spinner animation="border" size="sm" className="me-2" />
+                      )}
                       Delete
                     </Button>
                   </div>
@@ -224,7 +230,6 @@ const CreateClient = () => {
         )}
       </div>
 
-      {/* Modal for Update */}
       <Modal show={showModal} onHide={() => setShowModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Update Client</Modal.Title>
@@ -260,10 +265,7 @@ const CreateClient = () => {
                   type="text"
                   value={selectedClient.companyName}
                   onChange={(e) =>
-                    setSelectedClient({
-                      ...selectedClient,
-                      companyName: e.target.value,
-                    })
+                    setSelectedClient({ ...selectedClient, companyName: e.target.value })
                   }
                 />
               </Form.Group>
@@ -271,11 +273,12 @@ const CreateClient = () => {
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
+          <Button variant="secondary" onClick={() => setShowModal(false)} disabled={loadingUpdate}>
             Close
           </Button>
-          <Button variant="primary" onClick={handleUpdateClient}>
-            Update Client
+          <Button variant="primary" onClick={handleUpdateClient} disabled={loadingUpdate}>
+            {loadingUpdate && <Spinner animation="border" size="sm" className="me-2" />}
+            {loadingUpdate ? "Updating..." : "Update Client"}
           </Button>
         </Modal.Footer>
       </Modal>

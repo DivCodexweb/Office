@@ -1,43 +1,46 @@
 import { useState } from "react";
 
 const API_URL = process.env.REACT_APP_API_URL;
+
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const [loading, setLoading] = useState(false); // Loading state
 
-  if (!email || !password) {
-    alert("Please fill all fields");
-    return;
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  try {
-    
-    const res = await fetch(`${API_URL}/users/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      
-      sessionStorage.setItem("token", data.token);
-
-   
-      window.location.reload();
-    } else {
-      alert(data.message || "Invalid credentials");
+    if (!email || !password) {
+      alert("Please fill all fields");
+      return;
     }
-  } catch (error) {
-    console.error("Login Error:", error);
-    alert("Something went wrong. Please try again.");
-  }
-};
+
+    setLoading(true); // Start loading
+
+    try {
+      const res = await fetch(`${API_URL}/users/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        sessionStorage.setItem("token", data.token);
+        window.location.reload();
+      } else {
+        alert(data.message || "Invalid credentials");
+      }
+    } catch (error) {
+      console.error("Login Error:", error);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false); // Stop loading
+    }
+  };
 
   return (
     <div className="d-flex align-items-center justify-content-center vh-100 bg-gradient bg-primary bg-opacity-75">
@@ -76,8 +79,15 @@ const handleSubmit = async (e) => {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary w-100 fw-semibold">
-            Sign In
+          <button
+            type="submit"
+            className="btn btn-primary w-100 fw-semibold"
+            disabled={loading} // Disable button while loading
+          >
+            {loading ? (
+              <span className="spinner-border spinner-border-sm me-2"></span>
+            ) : null}
+            {loading ? "Signing In..." : "Sign In"}
           </button>
         </form>
 

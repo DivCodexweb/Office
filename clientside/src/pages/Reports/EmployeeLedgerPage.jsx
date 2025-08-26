@@ -8,6 +8,7 @@ const EmployeeLedgerPage = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [ledgerData, setLedgerData] = useState([]);
+  const [loading, setLoading] = useState(false); // ✅ loading state
 
   // Employees fetch
   useEffect(() => {
@@ -33,25 +34,28 @@ const EmployeeLedgerPage = () => {
     let from = startDate;
     let to = endDate;
 
-    // agar user ne date na di ho → default current month
     if (!startDate || !endDate) {
       const now = new Date();
       from = new Date(now.getFullYear(), now.getMonth(), 1)
         .toISOString()
-        .slice(0, 10); // 1st date
+        .slice(0, 10);
       to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
         .toISOString()
-        .slice(0, 10); // last date
+        .slice(0, 10);
     }
 
-    let url = `${API_URL}/dashboard/getEmployeeLedger?employeeId=${selectedEmployee}&startDate=${from}&endDate=${to}`;
-
+    setLoading(true); // ✅ start loading
     try {
-      const res = await fetch(url);
+      const res = await fetch(
+        `${API_URL}/dashboard/getEmployeeLedger?employeeId=${selectedEmployee}&startDate=${from}&endDate=${to}`
+      );
       const data = await res.json();
       setLedgerData(data || []);
     } catch (err) {
       console.error("Error fetching ledger:", err);
+      alert("Error fetching ledger data");
+    } finally {
+      setLoading(false); // ✅ stop loading
     }
   };
 
@@ -100,26 +104,24 @@ const EmployeeLedgerPage = () => {
       </button>
 
       {/* Ledger Table */}
-      <table className="table table-bordered">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Amount</th>
-            <th>Credit/Debit</th>
-            <th>Description</th>
-            <th>Date</th>
-            <th>Employee</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ledgerData.length === 0 ? (
+      {loading ? (
+        <div className="text-center mt-3">Loading ledger data...</div>
+      ) : ledgerData.length === 0 ? (
+        <div className="text-center mt-3">No Records Found</div>
+      ) : (
+        <table className="table table-bordered">
+          <thead>
             <tr>
-              <td colSpan="6" className="text-center">
-                No Records Found
-              </td>
+              <th>#</th>
+              <th>Amount</th>
+              <th>Credit/Debit</th>
+              <th>Description</th>
+              <th>Date</th>
+              <th>Employee</th>
             </tr>
-          ) : (
-            ledgerData.map((row, i) => (
+          </thead>
+          <tbody>
+            {ledgerData.map((row, i) => (
               <tr key={row.id}>
                 <td>{i + 1}</td>
                 <td>{row.ammount}</td>
@@ -128,10 +130,10 @@ const EmployeeLedgerPage = () => {
                 <td>{new Date(row.createdAt).toLocaleDateString()}</td>
                 <td>{row.employeeName}</td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 };

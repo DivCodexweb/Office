@@ -8,8 +8,9 @@ const ClientLedgerPage = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [ledgerData, setLedgerData] = useState([]);
+  const [loading, setLoading] = useState(false); // ✅ loading state
 
-  // Clients fetch
+  // Fetch clients
   useEffect(() => {
     const fetchClients = async () => {
       try {
@@ -18,40 +19,42 @@ const ClientLedgerPage = () => {
         setClients(data.users || []);
       } catch (err) {
         console.error("Error fetching clients:", err);
+        alert("Error fetching clients");
       }
     };
     fetchClients();
   }, []);
 
-  // Ledger fetch
+  // Default current month
+  useEffect(() => {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1)
+      .toISOString()
+      .slice(0, 10);
+    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      .toISOString()
+      .slice(0, 10);
+    setStartDate(from);
+    setEndDate(to);
+  }, []);
+
   const fetchLedger = async () => {
     if (!selectedClient) {
       alert("Please select a client");
       return;
     }
 
-    let from = startDate;
-    let to = endDate;
-
-    // Agar date na ho to default current month set karo
-    if (!startDate || !endDate) {
-      const now = new Date();
-      from = new Date(now.getFullYear(), now.getMonth(), 1)
-        .toISOString()
-        .slice(0, 10); // first date of month
-      to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-        .toISOString()
-        .slice(0, 10); // last date of month
-    }
-
-    let url = `${API_URL}/dashboard/getClientLedger?clientId=${selectedClient}&startDate=${from}&endDate=${to}`;
-
+    setLoading(true); // ✅ start loading
     try {
+      const url = `${API_URL}/dashboard/getClientLedger?clientId=${selectedClient}&startDate=${startDate}&endDate=${endDate}`;
       const res = await fetch(url);
       const data = await res.json();
-      setLedgerData(data);
+      setLedgerData(data || []);
     } catch (err) {
       console.error("Error fetching ledger:", err);
+      alert("Error fetching ledger");
+    } finally {
+      setLoading(false); // ✅ stop loading
     }
   };
 
@@ -59,6 +62,7 @@ const ClientLedgerPage = () => {
     <div className="container mt-4">
       <h3>Client Ledger</h3>
 
+      {/* Client Select */}
       <div className="mb-3">
         <label className="form-label">Select Client</label>
         <select
@@ -95,43 +99,47 @@ const ClientLedgerPage = () => {
         </div>
       </div>
 
-      <button className="btn btn-primary mb-3" onClick={fetchLedger}>
-        Get Ledger
+      <button className="btn btn-primary mb-3" onClick={fetchLedger} disabled={loading}>
+        {loading ? "Loading..." : "Get Ledger"}
       </button>
 
       {/* Ledger Table */}
-      <table className="table table-bordered">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Date</th>
-            <th>Client</th>
-            <th>Credit/Debit</th>
-            <th>Amount</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ledgerData.length === 0 ? (
+      {loading ? (
+        <div className="text-center mt-3">Loading ledger...</div> // ✅ show loading text
+      ) : (
+        <table className="table table-bordered">
+          <thead>
             <tr>
-              <td colSpan="6" className="text-center">
-                No Records Found
-              </td>
+              <th>#</th>
+              <th>Date</th>
+              <th>Client</th>
+              <th>Credit/Debit</th>
+              <th>Amount</th>
+              <th>Description</th>
             </tr>
-          ) : (
-            ledgerData.map((row, i) => (
-              <tr key={row.id}>
-                <td>{i + 1}</td>
-                  <td>{new Date(row.createdAt).toLocaleDateString()}</td>
-                <td>{row.clientName}</td>
-                <td>{row.Creditdebit}</td>
-                <td>{row.ammount}</td>
-                <td>{row.description}</td>
+          </thead>
+          <tbody>
+            {ledgerData.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="text-center">
+                  No Records Found
+                </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              ledgerData.map((row, i) => (
+                <tr key={row.id}>
+                  <td>{i + 1}</td>
+                  <td>{new Date(row.createdAt).toLocaleDateString()}</td>
+                  <td>{row.clientName}</td>
+                  <td>{row.Creditdebit}</td>
+                  <td>{row.ammount}</td>
+                  <td>{row.description}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 };

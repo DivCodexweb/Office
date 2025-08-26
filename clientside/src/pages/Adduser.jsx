@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Form } from "react-bootstrap";
+import { Modal, Button, Form, Spinner } from "react-bootstrap";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -7,7 +7,12 @@ const Adduser = () => {
   const [activeTab, setActiveTab] = useState("add");
   const [showModal, setShowModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [users, setUsers] = useState([]); // ✅ safe initial state
+  const [users, setUsers] = useState([]);
+
+  // Loading states
+  const [loadingAdd, setLoadingAdd] = useState(false);
+  const [loadingDelete, setLoadingDelete] = useState(null); // store id of deleting user
+  const [loadingUpdate, setLoadingUpdate] = useState(false);
 
   // Add User form states
   const [name, setName] = useState("");
@@ -20,11 +25,8 @@ const Adduser = () => {
     try {
       const res = await fetch(`${API_URL}/users/getUser`);
       const data = await res.json();
-      if (res.ok) {
-        setUsers(data.users);
-      } else {
-        alert(data.message || "Failed to fetch users");
-      }
+      if (res.ok) setUsers(data.users);
+      else alert(data.message || "Failed to fetch users");
     } catch (err) {
       console.error(err);
       alert("Error fetching users");
@@ -35,26 +37,24 @@ const Adduser = () => {
     Getuser();
   }, []);
 
-  // Open edit modal
   const handleEdit = (user) => {
     setSelectedUser(user);
     setShowModal(true);
   };
 
-  // Add User API
+  // Add User
   const handleAddUser = async () => {
     if (!name || !email || !password || !role) {
       alert("Please fill all fields");
       return;
     }
-
+    setLoadingAdd(true);
     try {
       const res = await fetch(`${API_URL}/users/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password, role }),
       });
-
       const data = await res.json();
       if (res.ok) {
         alert("User added successfully!");
@@ -62,69 +62,69 @@ const Adduser = () => {
         setEmail("");
         setPassword("");
         setRole("staff");
-        Getuser(); // ✅ refresh list
-      } else {
-        alert(data.message || "Failed to add user");
-      }
+        Getuser();
+      } else alert(data.message || "Failed to add user");
     } catch (err) {
       console.error(err);
       alert("Error adding user");
+    } finally {
+      setLoadingAdd(false);
     }
   };
-// Delete User API
-const handleDeleteUser = async (id) => {
-  if (!window.confirm("Are you sure you want to delete this user?")) return;
 
-  try {
-    const res = await fetch(`${API_URL}/users/deleteUser/${id}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const data = await res.json();
-    if (res.ok) {
-      alert("User deleted successfully!");
-      Getuser(); // ✅ refresh list
-    } else {
-      alert(data.message || "Failed to delete user");
+  // Delete User
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    setLoadingDelete(id);
+    try {
+      const res = await fetch(`${API_URL}/users/deleteUser/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("User deleted successfully!");
+        Getuser();
+      } else alert(data.message || "Failed to delete user");
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting user");
+    } finally {
+      setLoadingDelete(null);
     }
-  } catch (err) {
-    console.error(err);
-    alert("Error deleting user");
-  }
-};
+  };
 
-  // Update User API
+  // Update User
   const handleUpdateUser = async () => {
+    if (!selectedUser) return;
+    setLoadingUpdate(true);
     try {
       const res = await fetch(`${API_URL}/users/updateuser/${selectedUser.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: selectedUser.name || undefined,
-          email: selectedUser.email || undefined,
+          name: selectedUser.name,
+          email: selectedUser.email,
           password: selectedUser.password || undefined,
-          role: selectedUser.role || undefined,
+          role: selectedUser.role,
         }),
       });
-
       const data = await res.json();
       if (res.ok) {
         alert("User updated successfully!");
         setShowModal(false);
-        Getuser(); // ✅ refresh after update
-      } else {
-        alert(data.message || "Failed to update user");
-      }
+        Getuser();
+      } else alert(data.message || "Failed to update user");
     } catch (err) {
       console.error(err);
       alert("Error updating user");
+    } finally {
+      setLoadingUpdate(false);
     }
   };
 
   return (
     <div className="container mt-4">
-      {/* Tabs */}
       <ul className="nav nav-tabs">
         <li className="nav-item">
           <button
@@ -144,9 +144,7 @@ const handleDeleteUser = async (id) => {
         </li>
       </ul>
 
-      {/* Tab Content */}
       <div className="p-3 border border-top-0">
-        {/* Add User */}
         {activeTab === "add" && (
           <Form>
             <Form.Group>
@@ -181,58 +179,54 @@ const handleDeleteUser = async (id) => {
 
             <Form.Group className="mt-2">
               <Form.Label>Role</Form.Label>
-              <Form.Select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              >
+              <Form.Select value={role} onChange={(e) => setRole(e.target.value)}>
                 <option value="staff">Staff</option>
                 <option value="admin">Admin</option>
               </Form.Select>
             </Form.Group>
 
-            <Button variant="primary" className="mt-3" onClick={handleAddUser}>
-              Add User
+            <Button className="mt-3" variant="primary" onClick={handleAddUser} disabled={loadingAdd}>
+              {loadingAdd && <Spinner animation="border" size="sm" className="me-2" />}
+              {loadingAdd ? "Adding..." : "Add User"}
             </Button>
           </Form>
         )}
 
-        {/* Update User */}
         {activeTab === "update" && (
           <div>
-            <input
-              type="text"
-              placeholder="Search user..."
-              className="form-control mb-3"
-            />
-           <ul className="list-group">
-  {users.map((user) => (
-    <li
-      key={user.id}
-      className="list-group-item d-flex justify-content-between align-items-center"
-    >
-      <div>
-        {user.name} - {user.email}
-      </div>
-      <div>
-        <Button
-          variant="outline-primary"
-          size="sm"
-          className="me-2"
-          onClick={() => handleEdit(user)}
-        >
-          Edit
-        </Button>
-        <Button
-          variant="outline-danger"
-          size="sm"
-          onClick={() => handleDeleteUser(user.id)}
-        >
-          Delete
-        </Button>
-      </div>
-    </li>
-  ))}
-</ul>
+            <input type="text" placeholder="Search user..." className="form-control mb-3" />
+            <ul className="list-group">
+              {users.map((user) => (
+                <li
+                  key={user.id}
+                  className="list-group-item d-flex justify-content-between align-items-center"
+                >
+                  <div>{user.name} - {user.email}</div>
+                  <div>
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      className="me-2"
+                      onClick={() => handleEdit(user)}
+                      disabled={loadingUpdate}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      onClick={() => handleDeleteUser(user.id)}
+                      disabled={loadingDelete === user.id}
+                    >
+                      {loadingDelete === user.id && (
+                        <Spinner animation="border" size="sm" className="me-2" />
+                      )}
+                      Delete
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
@@ -267,10 +261,7 @@ const handleDeleteUser = async (id) => {
                   type="password"
                   value={selectedUser.password || ""}
                   onChange={(e) =>
-                    setSelectedUser({
-                      ...selectedUser,
-                      password: e.target.value,
-                    })
+                    setSelectedUser({ ...selectedUser, password: e.target.value })
                   }
                 />
               </Form.Group>
@@ -291,11 +282,12 @@ const handleDeleteUser = async (id) => {
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
+          <Button variant="secondary" onClick={() => setShowModal(false)} disabled={loadingUpdate}>
             Close
           </Button>
-          <Button variant="primary" onClick={handleUpdateUser}>
-            Update User
+          <Button variant="primary" onClick={handleUpdateUser} disabled={loadingUpdate}>
+            {loadingUpdate && <Spinner animation="border" size="sm" className="me-2" />}
+            {loadingUpdate ? "Updating..." : "Update User"}
           </Button>
         </Modal.Footer>
       </Modal>

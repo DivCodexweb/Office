@@ -11,30 +11,27 @@ const Expance = () => {
     description: "",
     Creditdebit: ""
   });
+  const [loading, setLoading] = useState(false); // ✅ Loading state
 
-  // Backend se Expense Types lana
+  // Fetch active expense types
   useEffect(() => {
     const fetchExpTypes = async () => {
       try {
         const res = await fetch(`${API_URL}/expance/getexpancetype`);
         const data = await res.json();
-        setExpTypes(data.users || []); // safe check
+        setExpTypes(data.users || []);
       } catch (error) {
         console.error("Error fetching expense types:", error);
+        alert("Error fetching expense types");
       }
     };
     fetchExpTypes();
   }, []);
 
-  // Input handle karna
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ExpenseType dropdown ke liye handler (id + name dono set)
   const handleExpTypeChange = (e) => {
     const selectedId = e.target.value;
     const selectedType = expTypes.find((t) => String(t.id) === selectedId);
@@ -46,18 +43,16 @@ const Expance = () => {
     });
   };
 
-  // Form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Expense Form Data:", formData); // ✅ dono jayenge
+    setLoading(true); // ✅ Start loading
 
     try {
       const res = await fetch(`${API_URL}/expance/addexpance`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData) // ✅ id + name dono send ho rhe hain
+        body: JSON.stringify(formData)
       });
-
       const data = await res.json();
 
       if (res.ok) {
@@ -74,6 +69,9 @@ const Expance = () => {
       }
     } catch (error) {
       console.error("Error submitting Expense:", error);
+      alert("Error submitting Expense");
+    } finally {
+      setLoading(false); // ✅ Stop loading
     }
   };
 
@@ -92,14 +90,13 @@ const Expance = () => {
             required
           >
             <option value="">-- Select Expense Type --</option>
-   {expTypes
-  .filter((t) => t.status === "Active") // ✅ sirf active dikhayega
-  .map((t) => (
-    <option key={t.id} value={t.id}>
-      {t.expancetype}
-    </option>
-  ))}
-
+            {expTypes
+              .filter((t) => t.status === "Active")
+              .map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.expancetype}
+                </option>
+              ))}
           </select>
         </div>
 
@@ -115,7 +112,6 @@ const Expance = () => {
           >
             <option value="">-- Select Type --</option>
             <option value="Credit">Credit</option>
-            {/* <option value="Debit">Debit</option> */}
           </select>
         </div>
 
@@ -143,8 +139,8 @@ const Expance = () => {
           />
         </div>
 
-        <button type="submit" className="btn btn-primary">
-          Save Expense
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? "Saving..." : "Save Expense"} {/* ✅ Feedback */}
         </button>
       </form>
     </div>

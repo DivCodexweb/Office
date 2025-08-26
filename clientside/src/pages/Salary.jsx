@@ -11,22 +11,24 @@ const Salary = () => {
     description: "",
     Creditdebit: ""
   });
+  const [loading, setLoading] = useState(false); // ✅ loading state
 
-  // Backend se Employee list lana
+  // Fetch employees
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
         const res = await fetch(`${API_URL}/employees/getEmployees`);
         const data = await res.json();
-        setEmployees(data.users || []); // ✅ safe check
+        setEmployees(data.users || []);
       } catch (error) {
         console.error("Error fetching employees:", error);
+        alert("Error fetching employees");
       }
     };
     fetchEmployees();
   }, []);
 
-  // Input handle karna
+  // Input handler
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -34,7 +36,7 @@ const Salary = () => {
     });
   };
 
-  // Employee dropdown ke liye handler (id + name dono set)
+  // Employee selection handler
   const handleEmployeeChange = (e) => {
     const selectedId = e.target.value;
     const selectedEmployee = employees.find((emp) => String(emp.id) === selectedId);
@@ -49,15 +51,14 @@ const Salary = () => {
   // Form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Salary Form Data:", formData); // ✅ dono jayenge
+    setLoading(true); // ✅ start loading
 
     try {
       const res = await fetch(`${API_URL}/expance/addsalery`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData) // ✅ id + name dono send ho rhe hain
+        body: JSON.stringify(formData)
       });
-
       const data = await res.json();
 
       if (res.ok) {
@@ -74,6 +75,9 @@ const Salary = () => {
       }
     } catch (error) {
       console.error("Error submitting Salary:", error);
+      alert("Error submitting Salary");
+    } finally {
+      setLoading(false); // ✅ end loading
     }
   };
 
@@ -81,7 +85,6 @@ const Salary = () => {
     <div className="container mt-4">
       <h3>Add Salary</h3>
       <form onSubmit={handleSubmit}>
-        {/* Employee Dropdown */}
         <div className="mb-3">
           <label className="form-label">Employee</label>
           <select
@@ -92,16 +95,14 @@ const Salary = () => {
             required
           >
             <option value="">-- Select Employee --</option>
-            {employees
-              .map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                {emp.id} -   {emp.name} 
-                </option>
-              ))}
+            {employees.map((emp) => (
+              <option key={emp.id} value={emp.id}>
+                {emp.id} - {emp.name}
+              </option>
+            ))}
           </select>
         </div>
 
-        {/* Credit / Debit */}
         <div className="mb-3">
           <label className="form-label">Credit / Debit</label>
           <select
@@ -113,11 +114,9 @@ const Salary = () => {
           >
             <option value="">-- Select Type --</option>
             <option value="Credit">Credit</option>
-            {/* <option value="Debit">Debit</option> */}
           </select>
         </div>
 
-        {/* Amount */}
         <div className="mb-3">
           <label className="form-label">Amount</label>
           <input
@@ -130,7 +129,6 @@ const Salary = () => {
           />
         </div>
 
-        {/* Description */}
         <div className="mb-3">
           <label className="form-label">Description</label>
           <textarea
@@ -141,8 +139,8 @@ const Salary = () => {
           />
         </div>
 
-        <button type="submit" className="btn btn-primary">
-          Save Salary
+        <button type="submit" className="btn btn-primary" disabled={loading}>
+          {loading ? "Saving..." : "Save Salary"} {/* ✅ Loading text */}
         </button>
       </form>
     </div>
