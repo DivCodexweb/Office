@@ -16,7 +16,7 @@ db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
 // Models import karo
-db.User = require("./User.js" )(sequelize, Sequelize);
+db.User = require("./User.js")(sequelize, Sequelize);
 db.Employee = require("./Employee.js")(sequelize, Sequelize);
 db.Clients = require("./Clients.js")(sequelize, Sequelize);
 db.Income = require("./Income.js")(sequelize, Sequelize);
